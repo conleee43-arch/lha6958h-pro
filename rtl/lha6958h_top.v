@@ -32,8 +32,8 @@ module lha6958h_top #(
   // --- lha6958h_pro timing (clks) ---
   parameter CONVST_HIGH_CLKS   = 4,
   parameter CONVST_LOW_CLKS    = 4,
-  parameter RD_LOW_CLKS        = 2,
-  parameter RD_HIGH_CLKS       = 2,
+  parameter RD_LOW_CLKS        = 2,        // 40ns @50MHz (满足 tLP_RD>=10ns，且覆盖出数延迟 tD_RD_DB<=27ns)
+  parameter RD_HIGH_CLKS       = 2,        // 40ns @50MHz (满足 tHP_RD>=10ns，整周期 80ns >= tCYC_RD 30ns)
   parameter POWERUP_DELAY_CLKS = 500000,   // tPOWER-UP 10 ms @50MHz
   parameter RESET_HOLD_CLKS    = 500,      // RESET high pulse (10us @50MHz >= 3us)
   parameter RESET_RECOVERY_CLKS= 30000,    // tDEVICE_SETUP = 600us @50MHz after RESET fall

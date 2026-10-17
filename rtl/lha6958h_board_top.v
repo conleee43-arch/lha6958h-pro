@@ -124,8 +124,8 @@ module lha6958h_board_top #(
         .SAMPLE_RATE_HZ     (SAMPLE_RATE_HZ),
         .CONVST_HIGH_CLKS   (4),     // 80ns @50MHz (>= tHP_CNV 80ns)
         .CONVST_LOW_CLKS    (4),     // 80ns @50MHz (>= tLP_CNV 80ns)
-        .RD_LOW_CLKS        (2),     // 40ns @50MHz (>= tD_RD_DB 27ns)
-        .RD_HIGH_CLKS       (2),     // 40ns @50MHz (周期 80ns >= 30ns)
+        .RD_LOW_CLKS        (2),     // 40ns @50MHz (满足 tLP_RD>=10ns，且覆盖出数延迟 tD_RD_DB<=27ns)
+        .RD_HIGH_CLKS       (2),     // 40ns @50MHz (满足 tHP_RD>=10ns，整周期 80ns >= tCYC_RD 30ns)
         .REG_DATA1          (8'h22), // CH2/CH1: ±10V 量程
         .REG_DATA2          (8'h22), // CH4/CH3: ±10V 量程
         .REG_DATA3          (8'h22), // CH6/CH5: ±10V 量程

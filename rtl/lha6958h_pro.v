@@ -86,8 +86,8 @@ module lha6958h_pro #(
   parameter CONVST_LOW_CLKS   = 4,          // CONVST low gap      (>=80ns)
   // Rev.B §6.1.2: tLP_RD/tHP_RD >= 10ns, tCYC_RD >= 30ns,
   //               tD_RD_DB <= 27ns (VDRIVE>2.7V), tH_RD_DB >= 12ns
-  parameter RD_LOW_CLKS       = 2,          // RD_N low width  (>=27ns+margin, 40ns @50MHz)
-  parameter RD_HIGH_CLKS      = 2,          // gap between RD_N pulses (40ns @50MHz, cycle 80ns)
+  parameter RD_LOW_CLKS       = 2,          // RD_N 低电平宽度 (满足 tLP_RD>=10ns，且覆盖出数延迟 tD_RD_DB<=27ns，40ns @50MHz)
+  parameter RD_HIGH_CLKS      = 2,          // RD_N 高电平间隔 (满足 tHP_RD>=10ns，整周期 80ns >= tCYC_RD 30ns，40ns @50MHz)
   // Rev.B §9.1:
   // - full reset pulse >= 3us (RESET_HOLD_CLKS).
   // - tDEVICE_SETUP = 600us recovery delay after RESET falling edge
@@ -395,7 +395,7 @@ module lha6958h_pro #(
 
           if (rd_phase == RD_LOW_CLKS) begin
             // data valid tD_RD_DB <= 27ns after RD_N falling; we latch at
-            // RD_LOW_CLKS (=80ns) so data and FRSTDATA are both settled.
+            // RD_LOW_CLKS (=40ns @50MHz) so data and FRSTDATA are both settled.
             ch_data[ch_cnt] <= db;
             if (ch_cnt == 4'd0)
               first_data_lat <= first_data; // FRSTDATA must be high for CH1
