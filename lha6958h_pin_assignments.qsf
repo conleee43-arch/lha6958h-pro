@@ -1,0 +1,35 @@
+# LHA6958H FPGA 引脚约束（Quartus .qsf）
+# 板级：H1 2.54-2*25 连接器，LHA6958H 并行总线 + 软件模式
+# 用户 2026-10-10 提供，已与 H1_pinmap.md 交叉核对一致
+# 用法：复制到工程 .qsf 末尾，或在 Quartus 中 source 此文件
+
+# 数据总线 DB[15:0]（双向，软件模式寄存器写时 FPGA 输出命令帧）
+set_location_assignment PIN_P11 -to DB[0]
+set_location_assignment PIN_L8  -to DB[1]
+set_location_assignment PIN_N8  -to DB[2]
+set_location_assignment PIN_M7  -to DB[3]
+set_location_assignment PIN_M6  -to DB[4]
+set_location_assignment PIN_P6  -to DB[5]
+set_location_assignment PIN_N5  -to DB[6]
+set_location_assignment PIN_T11 -to DB[7]
+set_location_assignment PIN_R11 -to DB[8]
+set_location_assignment PIN_R6  -to DB[9]
+set_location_assignment PIN_T6  -to DB[10]
+set_location_assignment PIN_T10 -to DB[11]
+set_location_assignment PIN_R5  -to DB[12]
+set_location_assignment PIN_T5  -to DB[13]
+set_location_assignment PIN_T4  -to DB[14]
+set_location_assignment PIN_T3  -to DB[15]
+
+# 控制与状态信号
+set_location_assignment PIN_T9  -to CS        ;# 片选，低有效，FPGA 输出
+set_location_assignment PIN_N6  -to RD        ;# 读选通，FPGA 输出
+set_location_assignment PIN_R14 -to WR        ;# 寄存器写，FPGA 输出（软件模式）
+set_location_assignment PIN_T12 -to CONVST    ;# 转换启动，上升沿有效，FPGA 输出
+set_location_assignment PIN_P15 -to RESET     ;# 复位，高有效，FPGA 输出
+set_location_assignment PIN_N13 -to BUSY      ;# 忙指示，FPGA 输入（内部两级同步）
+set_location_assignment PIN_M11 -to FRSTDATA  ;# 首通道指示，FPGA 输入（只在 CS 低时采样）
+
+# ---- IO 电平（按实际 Bank 电压取消注释；须与 LHA6958H 的 VDRIVE 一致） ----
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to DB[0]
+# ...（对上述所有信号逐一设置，或按 Bank 统一设置）

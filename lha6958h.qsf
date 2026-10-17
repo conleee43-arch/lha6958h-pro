@@ -1,0 +1,128 @@
+# -------------------------------------------------------------------------- #
+#
+# Quartus II 64-Bit
+# Version 13.1.0 Build 162 10/23/2013 SJ Full Version
+# Date created = 10:45:00  October 17, 2026
+#
+# -------------------------------------------------------------------------- #
+
+set_global_assignment -name FAMILY "Cyclone IV E"
+set_global_assignment -name DEVICE EP4CE10F17C8
+set_global_assignment -name TOP_LEVEL_ENTITY lha6958h_board_top
+set_global_assignment -name ORIGINAL_QUARTUS_VERSION 13.1
+set_global_assignment -name PROJECT_CREATION_TIME_DATE "10:45:00  OCTOBER 17, 2026"
+set_global_assignment -name LAST_QUARTUS_VERSION 13.1
+
+# Design Files
+set_global_assignment -name VERILOG_FILE rtl/lha6958h_board_top.v
+set_global_assignment -name VERILOG_FILE rtl/lha6958h_top.v
+set_global_assignment -name VERILOG_FILE rtl/lha6958h_pro.v
+set_global_assignment -name VERILOG_FILE rtl/lha6958h_reg_init.v
+set_global_assignment -name VERILOG_FILE rtl/uart_send.v
+set_global_assignment -name VERILOG_FILE rtl/uart_tx.v
+set_global_assignment -name VERILOG_FILE rtl/lha6958h_data_pack_buf.v
+
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
+set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
+set_global_assignment -name DEVICE_FILTER_PIN_COUNT 256
+set_global_assignment -name DEVICE_FILTER_SPEED_GRADE 8
+set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 1
+set_global_assignment -name NOMINAL_CORE_SUPPLY_VOLTAGE 1.2V
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_WEAK_PULLUP "AS INPUT TRI-STATED WITH WEAK PULL-UP"
+
+# -------------------------------------------------------------------------- #
+# 时钟与复位管脚约束
+# -------------------------------------------------------------------------- #
+set_location_assignment PIN_E1 -to clk
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to clk
+set_location_assignment PIN_M1 -to rst_n
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to rst_n
+
+# -------------------------------------------------------------------------- #
+# 板载 LED 指示灯
+# -------------------------------------------------------------------------- #
+set_location_assignment PIN_A4 -to led_init_done
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to led_init_done
+set_location_assignment PIN_B5 -to led_heartbeat
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to led_heartbeat
+
+# -------------------------------------------------------------------------- #
+# 板载 UART 串口发送引脚 (与 LHA5278H 硬件完全一致)
+# -------------------------------------------------------------------------- #
+set_location_assignment PIN_A13 -to uart_txd
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to uart_txd
+
+# -------------------------------------------------------------------------- #
+# LHA6958H 控制引脚 (H1 接口，Logic Pro 8 CH0~CH6 监测信号)
+# -------------------------------------------------------------------------- #
+# H1_36 (Logic CH0: 复位)
+set_location_assignment PIN_P15 -to RESET
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to RESET
+
+# H1_35 (Logic CH1: 寄存器写)
+set_location_assignment PIN_R14 -to WR
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to WR
+
+# H1_14 (Logic CH2: 片选)
+set_location_assignment PIN_T9  -to CS
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to CS
+
+# H1_37 (Logic CH3: 启动转换)
+set_location_assignment PIN_T12 -to CONVST
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to CONVST
+
+# H1_34 (Logic CH4: 忙指示)
+set_location_assignment PIN_N13 -to BUSY
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to BUSY
+
+# H1_20 (Logic CH5: 读选通)
+set_location_assignment PIN_N6  -to RD
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to RD
+
+# H1_32 (Logic CH6: 首通道指示)
+set_location_assignment PIN_M11 -to FRSTDATA
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to FRSTDATA
+
+# -------------------------------------------------------------------------- #
+# LHA6958H 并行数据总线 DB[15:0] (H1 接口)
+# -------------------------------------------------------------------------- #
+set_location_assignment PIN_P11 -to DB[0]
+set_location_assignment PIN_L8  -to DB[1]
+set_location_assignment PIN_N8  -to DB[2]
+set_location_assignment PIN_M7  -to DB[3]
+set_location_assignment PIN_M6  -to DB[4]
+set_location_assignment PIN_P6  -to DB[5]
+set_location_assignment PIN_N5  -to DB[6]
+set_location_assignment PIN_T11 -to DB[7]
+set_location_assignment PIN_R11 -to DB[8]
+set_location_assignment PIN_R6  -to DB[9]
+set_location_assignment PIN_T6  -to DB[10]
+set_location_assignment PIN_T10 -to DB[11]
+set_location_assignment PIN_R5  -to DB[12]
+set_location_assignment PIN_T5  -to DB[13]
+set_location_assignment PIN_T4  -to DB[14]
+set_location_assignment PIN_T3  -to DB[15]
+
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to DB[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to DB[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to DB[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to DB[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to DB[4]
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to DB[5]
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to DB[6]
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to DB[7]
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to DB[8]
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to DB[9]
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to DB[10]
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to DB[11]
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to DB[12]
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to DB[13]
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to DB[14]
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to DB[15]
+
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
