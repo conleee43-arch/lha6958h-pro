@@ -1,130 +1,168 @@
-# LHA6958H 专业级 FPGA 驱动
+# LHA6958H 专业级 FPGA 驱动与板级采集系统
 
-Legend Semi LHA6958H（8 通道 16 位 1MSPS 同步采样 SAR ADC）并行接口驱动，
-目标 Altera Cyclone IV（EP4CE10）单时钟域纯 RTL，无 AXI 依赖。
-规格依据：`LHA6958H_Datasheet_Rev.B.pdf`（68 页中文），时序逐项提取见
-`workspace/datasheets/sar-adc/lha6958h_timing_extract.md`。
+Legend Semi LHA6958H（8 通道 16 位 1MSPS 同步采样 SAR ADC）并行接口驱动与完整板级采集系统，
+目标芯片 Altera Cyclone IV E（`EP4CE10F17C8`），单时钟域纯 RTL，无 AXI 依赖。
+规格依据：`LHA6958H_Datasheet_Rev.B.pdf`（68 页中文）。
 
-## 文件
+---
+
+## 1. 工程文件结构
 
 ```
 lha6958h-pro/
 ├── rtl/
-│   ├── lha6958h_top.v        # 顶层集成：pro + reg_init，上电时序与总线二选一
-│   ├── lha6958h_pro.v        # ADC 读数驱动：CONVST 定时器、BUSY 下降沿触发读突发、
-│   │                         # FRSTDATA 通道对齐校验、BUSY 看门狗、采样 overrun 检测、
-│   │                         # tPOWER-UP 延迟 + 上电复位时序（por_done 握手）
-│   └── lha6958h_reg_init.v   # 上电寄存器初始化：并行 WR 写 CONFIG/量程/过采样，
-│                             # 最后自动追加 (0x00,0x00) 切回 ADC 读数模式
+│   ├── lha6958h_board_top.v    # 【工程板级顶层】Quartus 实际顶层实体 (TOP_LEVEL_ENTITY)，
+│   │                           # 集成 ADC 驱动、1024 组 RAM 打包、1.5M UART 发送、心跳与 LED
+│   ├── lha6958h_top.v          # 【ADC 驱动子系统顶层】集成 pro 读数 + reg_init 初始化，可直接复用到其他工程
+│   ├── lha6958h_pro.v          # ADC 读数核心：CONVST 定时器、BUSY 下降沿触发读突发、
+│   │                           # FRSTDATA 通道对齐校验、BUSY 看门狗、采样 overrun 检测、
+│   │                           # tPOWER-UP 延迟 + 上电复位时序（por_done 握手）
+│   ├── lha6958h_reg_init.v     # 上电寄存器初始化：并行 WR 写 CONFIG/量程/过采样，
+│   │                           # 最后自动追加 (0x00,0x00) 切回 ADC 读数模式
+│   ├── lha6958h_reg_read.v     # 独立寄存器读回控制器：双帧并行读回协议（Rev.B §7.4）
+│   ├── lha6958h_data_pack_buf.v# 1024 组 (16KB) 片上 M9K Block RAM 缓存与通信协议大包组装
+│   ├── uart_send.v             # 串口发送底层驱动（支持 1.5Mbps / 115200 等波特率）
+│   └── uart_tx.v               # 备用高精度串口发送模块
 ├── sim/
-│   ├── tb_lha6958h_pro.v     # 行为模型 + 5 组测试：复位先于写时序 / 寄存器初始化
-│   │                         # （非常规值验证写入生效）/ 正常帧 / FRSTDATA 故障 /
-│   │                         # BUSY 卡死
-│   └── tb_lha6958h_overrun.v # 采样率超限 → err_overrun 检测
-├── H1_pinmap.md              # H1 连接器信号→H1 引脚→FPGA 引脚对照表
-└── lha6958h_pin_assignments.qsf  # Quartus 引脚约束（已核对）
+│   ├── tb_lha6958h_pro.v       # 行为模型 + 5 组核心测试（复位、初始化、正常帧、FRSTDATA、超时）
+│   ├── tb_lha6958h_overrun.v   # 采样率超限 → err_overrun 异常检测
+│   ├── tb_lha6958h_reg_read.v  # 寄存器双帧读回时序仿真
+│   ├── run_gui.do              # ModelSim 自动化仿真脚本
+│   ├── run_modelsim_gui.bat    # ModelSim 图形化一键启动脚本
+│   └── render_waveform.py      # 波形解析与渲染脚本 (生成 wave_reg_read.png)
+├── gui/                        # PySide6 8 通道实时示波器上位机
+│   ├── main.py                 # 上位机主入口
+│   ├── main_window.py          # 主界面与绘图逻辑
+│   ├── protocol.py             # 16,392 字节极简大包协议解析器
+│   ├── serial_worker.py        # 独立串口异步接收与缓存线程
+│   └── virtual_source.py       # 离线模拟信号生成器
+├── output_files/
+│   └── lha6958h.sof            # Quartus 编译生成的 FPGA 固件
+├── download_sof.bat            # USB-Blaster 固件一键烧录脚本
+├── run_gui.bat                 # 上位机一键启动脚本
+├── uart_terminal.py            # 纯终端动态 ANSI 看板与实时监控器
+├── H1_pinmap.md                # H1 连接器信号→H1 引脚→FPGA 引脚对照表 (50-pin)
+├── lha6958h.qpf                # Quartus II 工程文件
+├── lha6958h.qsf                # 【工程核心约束】28 个物理管脚、3.3-V LVCMOS 电平及综合设置
+└── lha6958h_pin_assignments.qsf# 23 个 ADC 引脚参考约束片段
 ```
 
-仿真（已验证全过）：
+---
+
+## 2. 顶层架构与工程实体对应关系
+
+工程中存在两级顶层抽象，以 **`lha6958h.qsf` 工程设置为准**：
+
+| 实体名称 | 文件 | 角色说明 |
+|:---|:---|:---|
+| **`lha6958h_board_top`** | `rtl/lha6958h_board_top.v` | **Quartus 实际物理板级顶层**（`TOP_LEVEL_ENTITY`）。直接连接开发板时钟、复位、LED、UART 串口和 H1 接口 ADC 信号。 |
+| **`lha6958h_top`** | `rtl/lha6958h_top.v` | **ADC 驱动核心子系统**。仅负责 LHA6958H 驱动及上电寄存器初始化，输出 128 位并行数据 `adc_data` 和 `adc_valid`，供嵌入到其他系统使用。 |
+
+### 板级顶层引脚分配（共 28 Pins，见 `lha6958h.qsf`）
+
+- **系统时钟/复位**:
+  - `clk` (PIN_E1, 50MHz)
+  - `rst_n` (PIN_M1, 低有效复位按键)
+- **状态指示与通信**:
+  - `led_init_done` (PIN_A4, LED0, 低电平点亮：寄存器配置成功)
+  - `led_heartbeat` (PIN_B5, LED1, 1Hz 闪烁：系统正常采集中；常亮：硬件报警)
+  - `uart_txd` (PIN_A13, UART 串口发送端口，默认 1.5Mbps)
+- **LHA6958H 控制引脚 (H1 接口，Logic Pro 8 CH0~CH6 监测信号)**:
+  - `RESET` (PIN_P15, H1_36 / CH0): ADC 上电复位，高有效
+  - `WR` (PIN_R14, H1_35 / CH1): 软件模式寄存器写选通，上升沿锁存
+  - `CS` (PIN_T9, H1_14 / CH2): 片选，低有效
+  - `CONVST` (PIN_T12, H1_37 / CH3): 转换启动脉冲，**上升沿**有效
+  - `BUSY` (PIN_N13, H1_34 / CH4): 忙状态指示输入（内部两级同步）
+  - `RD` (PIN_N6, H1_20 / CH5): 读选通，低有效
+  - `FRSTDATA` (PIN_M11, H1_32 / CH6): 首通道指示输入（通道对齐校验）
+- **LHA6958H 并行总线**:
+  - `DB[15:0]`: 双向总线（H1 接口打散引脚，软件模式写寄存器输出配置帧，采集中输入 16 位补码数据）
+
+---
+
+## 3. 上电与初始化时序（por_done / init_done 强制握手）
 
 ```
-cd sim
-iverilog -o tb_lha6958h_pro tb_lha6958h_pro.v ../rtl/lha6958h_top.v ../rtl/lha6958h_pro.v ../rtl/lha6958h_reg_init.v && ./tb_lha6958h_pro
-iverilog -o tb_lha6958h_overrun tb_lha6958h_overrun.v ../rtl/lha6958h_pro.v && ./tb_lha6958h_overrun
+lha6958h_pro: tPOWER-UP(10ms) → RESET 脉冲(≥3µs) → 恢复等待(600µs) → por_done=1
+                                                                     ↓
+lha6958h_reg_init: 写 0x02/0x03~0x06/0x08 → 写 0x00 回 ADC 模式 → init_done=1
+                                                                     ↓
+lha6958h_pro: CONVST 定时器启动，连续突发出数
 ```
 
-## 上电时序（por_done / init_done 握手，强制顺序）
+> **强制设计原则**：**寄存器写操作必须在 RESET 脉冲及 tDEVICE_SETUP 之后执行**。芯片在 RESET=1 期间会忽略寄存器写操作。工程采用硬件单向信号握手，确保时序 100% 可靠。
 
-```
-pro: tPOWER-UP(10ms) → RESET 脉冲(≥3µs) → por_done=1
-                                            ↓
-reg_init: 写 0x02/0x03~0x06/0x08 → 写 0x00 回 ADC 模式 → init_done=1
-                                            ↓
-pro: CONVST 定时器启动，开始出数
-```
+---
 
-这个顺序是强制的：**寄存器写必须在 RESET 脉冲之后**——芯片在 RESET=1
-期间会忽略寄存器写。如果把 pro 按住复位等 init 完成（如早期版本），
-写操作会全部丢失（且之后 pro 自己的复位还会清掉寄存器）。不要改这个顺序。
+## 4. 驱动子系统例化方式 (`lha6958h_top.v`)
 
-## 板级 strapping（LQFP-64 引脚号见手册 §8 表7）
-
-| 引脚 | 接法 | 说明 |
-|---|---|---|
-| PAR/SER SEL（6） | 0（ADC 板上焊死） | 并行接口（本驱动只支持并行）；**不在 H1 上** |
-| OS2~OS0（3~5） | 111（ADC 板上焊死） | 软件模式：量程/过采样走寄存器，由 reg_init 上电配置；**不在 H1 上**，驱动的 `ad_os` 输出可悬空 |
-| STBY（7） | 1 | 软件模式下被忽略，接高即可 |
-| RANGE（8） | 高或低 | 软件模式下被忽略，但必须端接 |
-| REF SELECT（34） | 按基准方案 | 高=内部 2.5V；低=外部基准接 REFIN/REFOUT（42） |
-| WR（10） | 顶层 `wr_n` | 初始化阶段由 reg_init 驱动，之后保持高 |
-| RESET（11） | 顶层 `adc_reset` | 驱动上电给完全复位（≥3µs，默认 1.3ms） |
-| CONVST（9） | 顶层 `convst` | **上升沿**启动转换（注意：与经典 AD7606 的下降沿相反） |
-| AVCC | 5V | 用户已确认 |
-| VDRIVE（23） | 3.3V | 用户已确认（>2.7V 档：tD_RD_DB 取 27ns） |
-
-注意：LHA6958H 只有**一个** CONVST 引脚，没有 CONVST_A/B。
-H1 引脚对照见 `H1_pinmap.md`，Quartus 约束见 `lha6958h_pin_assignments.qsf`。
-
-## 顶层例化（直接用）
+若需要在自己的 SOC/FPGA 工程中嵌入 ADC 采集核心，可直接例化 `lha6958h_top`：
 
 ```verilog
 lha6958h_top #(
-  .SAMPLE_RATE_HZ    (500_000),   // 500kSPS 采样率 (无溢出，信噪比最佳)
-  .BUSY_TIMEOUT_CLKS (500),       // 必须大于所配过采样档的最坏 tCONV
-  .REG_DATA1         (8'h22),     // 例：0x03 = ch2/ch1 均为 ±10V 低带宽
-  .REG_DATA2         (8'h22),
-  .REG_DATA3         (8'h22),
-  .REG_DATA4         (8'h22)
-  // REG_DATA5(0x08) 过采样：0x00=无，0x01=2x，0x02=4x … 0x08=256x
-) adc_top (
-  .clk(clk), .rst_n(rst_n),
-  .init_restart(1'b0), .err_clear(err_clear),
-  .convst(CONVST), .cs_n(CS_N), .rd_n(RD_N), .wr_n(WR_N),
-  .adc_reset(RESET), .ad_os(),            // OS 在 ADC 板上已焊死可悬空
-  .db(DB), .busy(BUSY), .first_data(FRSTDATA),
-  .adc_data(adc_data), .adc_valid(adc_valid),
-  .init_done(init_done), .por_done(),
-  .err_align(err_align), .err_busy_timeout(err_busy_timeout),
-  .err_overrun(err_overrun)
+  .CLK_FREQ_HZ        (50_000_000), // 系统时钟频率
+  .SAMPLE_RATE_HZ     (500_000),    // 500kSPS 采样率 (无溢出，信噪比最佳)
+  .BUSY_TIMEOUT_CLKS  (500),        // 必须大于所配过采样档的最坏 tCONV
+  .REG_DATA1          (8'h22),      // CH2/CH1: ±10V 低带宽量程 (0010_0010)
+  .REG_DATA2          (8'h22),      // CH4/CH3: ±10V 低带宽量程
+  .REG_DATA3          (8'h22),      // CH6/CH5: ±10V 低带宽量程
+  .REG_DATA4          (8'h22),      // CH8/CH7: ±10V 低带宽量程
+  .REG_DATA5          (8'h00)       // 0x08 寄存器过采样: 0x00=无过采样 (1MSPS)
+) u_adc_core (
+  .clk                (clk),
+  .rst_n              (rst_n),
+  .init_restart       (1'b0),
+  .err_clear          (err_clear),
+
+  // 连接到 ADC 芯片物理引脚
+  .convst             (CONVST),
+  .cs_n               (CS),
+  .rd_n               (RD),
+  .wr_n               (WR),
+  .adc_reset          (RESET),
+  .ad_os              (),           // OS 在板上已焊死为 111，可悬空
+  .db                 (DB),
+  .busy               (BUSY),
+  .first_data         (FRSTDATA),
+
+  // 用户侧数据输出接口
+  .adc_data           (adc_data),   // 128 位: {CH8[15:0], ..., CH1[15:0]}
+  .adc_valid          (adc_valid),  // 单周期数据有效脉冲
+  .init_done          (init_done),  // 初始化完成标志
+  .por_done           (por_done),
+  .err_align          (err_align),
+  .err_busy_timeout   (err_busy_timeout),
+  .err_overrun        (err_overrun)
 );
-// init_done=1 之后 adc_valid 才开始出数；此前的 adc_data 无效。
 ```
 
-## 参数速查
+---
 
-- `SAMPLE_RATE_HZ`：上限 1MSPS（tCYCLE=1µs，无过采样时）。过采样下两次 CONVST
-  间隔必须大于该档 tCONV（手册表2：x2=2.3µs … x256=324µs 典型值）。
-- `BUSY_TIMEOUT_CLKS`：必须大于所配过采样档的最坏 tCONV，否则每帧误报。
-  默认 500（@50MHz=10µs）覆盖到 8x 档；16x 及以上请按表放大。
-- `RESET_HOLD_CLKS`：默认 500（@50MHz=10µs），完全复位高脉冲宽度（手册 §9.1 规定 ≥3µs）。
-- `RESET_RECOVERY_CLKS`：默认 30000（@50MHz=600µs），RESET 下降沿后 tDEVICE_SETUP 设备准备时间，必须等满 600µs 才能发起首个写操作。
-- `POWERUP_DELAY_CLKS`：默认 500000（@50MHz=10ms），tPOWER-UP：电源稳定到
-  RESET 置位的最短时间。
-- 量程/过采样改法：顶层的 `REG_DATA0~5`（默认 CONFIG=0x08、全通道 ±12.5V
-  低带宽、无过采样——即复位默认值）。量程编码见 reg_init 模块头注释——
-  **LHA 的 0010=±10V，0100~0111=高带宽模式**，与 AD7606C-16 不兼容，
-  不要直接搬 ADI 的配置代码。
+## 5. 仿真与验证
 
-## 从 ad7606_pro.v 移植时的三个坑（已在本驱动中处理）
+仿真验证均已通过，支持 Icarus Verilog 与 ModelSim：
 
-1. **CONVST 边沿反了**：LHA6958H 是上升沿启动转换（手册 §10.2），AD7606 是
-   下降沿。本驱动脉冲 CONVST 为高。
-2. **只有一个 CONVST**：LHA6958H 引脚 9 是唯一的 CONVST，无 A/B 之分。
-3. **量程寄存器编码不同**：地址都是 0x03~0x06、复位值都是 0x33，但位定义
-   不兼容（见上）。并行接口只有 16 位模式，无 8 位模式。
+```bash
+# 1. 核心读数与寄存器配置时序仿真 (Icarus Verilog)
+cd sim
+iverilog -o tb_lha6958h_pro tb_lha6958h_pro.v ../rtl/lha6958h_top.v ../rtl/lha6958h_pro.v ../rtl/lha6958h_reg_init.v && ./tb_lha6958h_pro
 
-## 上板前待确认（需用户给）
+# 2. 采样率超限保护仿真
+iverilog -o tb_lha6958h_overrun tb_lha6958h_overrun.v ../rtl/lha6958h_pro.v && ./tb_lha6958h_overrun
 
-- [x] H1 引脚表 → 已整理 `H1_pinmap.md` + `lha6958h_pin_assignments.qsf`（23/23 核对一致）
-- [x] VDRIVE=3.3V（>2.7V 档，时序按 27ns 取）——用户已确认；AVCC=5V
-- [x] H1_48 脚：原理图打 X，用户引脚表写 3.3V——用户已确认不需要理会（板上 LDO 由 5V 转出 3.3V，非信号脚）
-- [ ] ADC 板上 OS2~OS0 是否焊死为 111（软件模式）、PAR/SER SEL 是否为 0（并行）——H1 上没有这两个信号，请确认 ADC 板
-- [ ] REF SELECT 的接法（内部 2.5V 基准还是外部基准）
+# 3. 寄存器双帧读回时序仿真
+iverilog -o tb_lha6958h_reg_read tb_lha6958h_reg_read.v ../rtl/lha6958h_reg_read.v && ./tb_lha6958h_reg_read
 
-## UART 串口传输与数据打包协议 (参考 LHA5278H 架构)
+# 4. ModelSim 图形化仿真 (Windows)
+双击 sim/run_modelsim_gui.bat 一键载入并查看波形
+```
+
+---
+
+## 6. UART 串口传输与数据打包协议 (参考 LHA5278H 架构)
 
 ### 1. 硬件引脚分配
-- **FPGA 芯片**: Cyclone IV E (EP4CE10F17C8)
+- **FPGA 芯片**: Cyclone IV E (`EP4CE10F17C8`)
 - **UART 发送端口**: `PIN_A13`（`uart_txd`，3.3-V LVCMOS）
 - **默认波特率**: `1,500,000 bps`（1.5Mbps，8-N-1，误差仅 1.01%），支持参数化修改为 115200 等。
 
@@ -136,29 +174,8 @@ lha6958h_top #(
 - **数据载荷** (16,384 字节): 1024 组 × 8 通道 × 2 字节（16-bit 补码，高字节在先 MSB first，CH1 ~ CH8 排列）
 - **帧尾** (2 字节): `0x0D, 0x0A` (`\r\n`)
 
-### 3. 上电与心跳机制
-- 上电 10ms 或系统处于空闲时，每 1 秒心跳周期自动发送问候测试字符串：`"Hello! LHA6958H ADC UART OK!\r\n"`。
-- 进入连续采集循环后，串口自动切换为极简大包高速流传输。
-
-### 4. 纯终端数据实时监视 (无需弹窗，直接在 Terminal 刷新)
-直接在终端中运行独立终端监视器：
-```bash
-# 自动检测并连接串口 (如 COM12)，以 ANSI 动态看板实时刷新 8 通道数据与幅度条
-python uart_terminal.py
-
-# 滚动数据流模式 (每包打印一行)
-python uart_terminal.py --stream
-
-# 指定串口与波特率
-python uart_terminal.py --port COM12 --baud 1500000
-
-# 离线模拟数据演示 (无硬件时验证)
-python uart_terminal.py --virtual
-```
-
-### 5. 图形界面上位机运行
-项目内置 PySide6 实时图形上位机：
-```bash
-python gui/main.py
-```
-或直接双击根目录下的 `run_gui.bat` 启动。在图形界面运行期间，终端也会同步实时打印接收到的各通道最新数据摘要。
+### 3. 上电心跳与运行
+- **心跳与问候**：上电完成或空闲时，每 1 秒心跳自动发送字符串：`"Hello! LHA6958H ADC UART OK!\r\n"`。
+- **固件一键下载**：开发板连接 USB-Blaster 后，双击根目录下的 `download_sof.bat` 即可一键烧录 [output_files/lha6958h.sof](file:///d:/FPGA/SoftWare-Project/lha6958h-pro/output_files/lha6958h.sof)。
+- **实时上位机**：双击 `run_gui.bat` 或运行 `python gui/main.py` 启动示波器图形界面。
+- **终端监控**：运行 `python uart_terminal.py` 可在命令行直接查看 ANSI 动态波形与各通道数值。
